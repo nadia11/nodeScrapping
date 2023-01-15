@@ -3,53 +3,73 @@ var router = express.Router();
 var cheerio = require('cheerio');
 var fetch = require('node-fetch');
 
-let rank;
+let title;
 let money;
 let mileage;
 let power;
 let descriptionList;
 let registration;
 let totalAdd;
-let adds = [];
-let totalPage = 16;
+let totalPage = 15;
 const initialUrl = "https://www.otomoto.pl/ciezarowe/uzytkowe/mercedes-benz";
 let pageQueryParams = [];
+let id;
+let url;
+const promises = [];
 
 
+function getTotalAddCount($)
+{
+  totalAdd = $('.ooa-1000v3p');
+  totalAdd = totalAdd[0]?.children[2]?.children[0]?.data?.split(" ")[1].replace(/[{()}]/g, '');
+}
 
-function getVehicleData(j) {
+function addItems(element,title)
+{
+  id=element?.attribs?.id;
+  url=title[1]?.attribs?.href;
+}
 
+function getNextPageUrl() {
+  for (let i = 1; i <= totalPage; i++) {
+    pageQueryParams.push("?page=" + i)
+  }
+}
 
-  return fetch('https://proxy.scrapeops.io/v1/?api_key=b8625ca1-faf5-4841-99c3-db8224b1e995&url=https://www.otomoto.pl/ciezarowe/uzytkowe/mercedes-benz' + pageQueryParams[j],
+function scrapeTruckItem(j) {
+
+  return fetch('https://proxy.scrapeops.io/v1/?api_key=b8625ca1-faf5-4841-99c3-db8224b1e995&url='+initialUrl + pageQueryParams[j],
     {
       headers:
         {"User-Agent": 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36',}
     })
+
     .then((response) => {
       return response?.text();
     })
+
     .then(res => {
-
       const $ = cheerio.load(res, null, false);
-      totalAdd = $('.ooa-1000v3p');
-      totalAdd = totalAdd[0]?.children[2]?.children[0]?.data?.split(" ")[1].replace(/[{()}]/g, '');
-      //totalPage = $('.pagination-list li:nth-last-child(2) span')?.firstChild?.textContent;
-      //totalPage = parseInt($('.pagination-list li')[5].children[0].children[0].children[0].data) || 16;
 
+      getTotalAddCount($)
 
-      return $('article').map((i, el) => {
-
-        rank = $(el).find('a');
-        money = $(el).find('.e1b25f6f11');
-        descriptionList = $(el).find('ul');
+      return $('article').map((i, element) =>
+      {
+        title = $(element).find('a');
+        money = $(element).find('.e1b25f6f11');
+        descriptionList = $(element).find('ul');
         registration = descriptionList[0]?.children[1]?.children[0]?.data;
         mileage = descriptionList[0]?.children[2]?.children[0]?.data;
         power = descriptionList[0]?.children[3]?.children[0]?.data;
 
+        addItems(element,title);
+
         return {
           pageNumber: j,
           totalAdd: totalAdd,
-          title: rank[0]?.children[0]?.data,
+          id:id,
+          url:url,
+          title: title[0]?.children[0]?.data,
           price: money[0]?.children[0]?.data,
           registrationYear: registration,
           mileage: mileage,
@@ -57,30 +77,20 @@ function getVehicleData(j) {
         };
       });
     })
+
     .catch((error) => {
       console.log("========================");
       console.log("Error Fetching Page ", j);
       console.log(error);
       console.log("========================");
     });
-
-
-}
-
-function getNextPageUrl() {
-  for (let i = 1; i <= totalPage; i++) {
-    pageQueryParams.push("?page=" + i)
-  }
-  //console.log(pageQueryParams);
 }
 
 router.get('/', function (req, res, next) {
   getNextPageUrl();
-  const promises = [];
-  for (i = 1; i <= totalPage; i++) {
-    promises.push(getVehicleData(i));
-
-
+  for ( let i = 1; i <= totalPage; i++)
+  {
+    promises.push(scrapeTruckItem(i));
   }
   Promise.all(promises)
     .then((adds) => {

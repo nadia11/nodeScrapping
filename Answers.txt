@@ -1,0 +1,9 @@
+
+Answer1.To catch error, a console log has been added to find which page is causing the error. A retry strategy can be, to keep the page Urls
+ in an array that are not being able to fetch data, and restart the process for those urls only.
+
+ Answer3. Yes I am familiar with CI/CD tools and deployed several Node js based projects through "vercel"
+
+ Answer4: It takes a long time to fetch data which can lead to user dissatisfaction. Instead we can add a method that will call
+ the api endpoint once and store data in redis. For further calling we can simply fetch data from redis instead of api call which can
+ save a lot of time.
